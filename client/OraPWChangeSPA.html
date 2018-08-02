@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.3.1/jquery.min.js"></script>
+    <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/knockout/3.4.2/knockout-min.js"></script>
+</head>
+
+<style>
+    .fields {
+        display: inline-block;
+        width: 150px;
+        text-align: left;
+        padding-right: 5px;
+    }
+</style>
+
+<body>
+ 
+<h3>Oracle Password Rewrite Prototype</h3>
+
+<div>
+    <span class="fields">Database Name:</span><select data-bind="options: databases, optionsText: 'display', value: selectedDatabase"></select>
+</div>
+<br/>
+<div>
+    <span class="fields">User Name:</span><input type="text" data-bind="value: userName" />
+</div>
+<br/>
+<div>
+    <span class="fields">Current Password:</span><input type="password" data-bind="value: currentPW" />
+</div>
+<br/>
+<div>
+    <span class="fields">New Password:</span><input type="password" data-bind="value: newPW" />
+</div>
+<br/>
+<div>
+    <span class="fields">Confirm Password:</span><input type="password" data-bind="value: confirmPW" />
+</div>
+<br/>
+<div>
+    <input type="button" data-bind="click: changePassword" value="Change Password"> &nbsp;<span data-bind="text: successMessage" style="color: green"></span>
+</div>
+
+<script type="text/javascript">
+    $(document).ready(function () {
+        function myViewModel() {
+            var self = this;
+            self.databases = ko.observableArray([]);
+            self.selectedDatabase = ko.observable('');
+            self.userName = ko.observable('');
+            self.currentPW = ko.observable('');
+            self.newPW = ko.observable('');
+            self.confirmPW = ko.observable('');
+            self.successMessage = ko.observable('');
+
+            self.getOracleDatabases = function() {
+                $.support.cors = true;
+                $.ajax({
+                    url: "http://localhost:9091/oradbs",
+                    type: "GET",
+                    dataType: 'json',
+                    contentType: "application/json;charset=utf-8",
+                    success: function (data) {
+                        data.forEach(db => {
+                            self.databases.push(db);
+                        })
+                    },
+                    error: function (jqXHR, status, error) {
+                        console.log(jqXHR);
+                        console.log(status);
+                        console.log(error);
+                    },
+                    headers: {
+                        'X-APIKEY-HEADER': '00000000000000000000000000000000'
+                    }
+                });
+            }
+
+            self.changePassword = function() {
+                $.support.cors = true;
+                $data = {
+                    userName: self.userName(),
+                    connectionString: self.selectedDatabase().connectString,
+                    oldPassword: self.currentPW(),
+                    newPassword: self.newPW(),
+                    confirmPassword: self.confirmPW()
+                };
+
+                if((self.userName() != "" && self.currentPW() != "" && self.newPW() != "" && self.confirmPW() != "") && self.newPW() == self.confirmPW()) {
+                    $.post({
+                        url: "http://localhost:9092/",
+                        data: $data,
+                        headers: { 'X-APIKEY-HEADER': '00000000000000000000000000000000'}
+                    }).done(function(data){ 
+                        self.successMessage('Password change succeeded!');
+                    }).fail(function(data){
+                        console.error(data);
+                    });
+                } else {
+                    console.log('PW change conditions not met.');
+                }
+            }
+        }
+
+        var model = new myViewModel();
+        ko.applyBindings(model);
+        model.getOracleDatabases();
+    });
+</script>
+</body>
+</html>
